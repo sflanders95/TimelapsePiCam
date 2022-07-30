@@ -34,10 +34,12 @@ function LogTemp() {
 }
 
 function LogTempToDB() {
-  DB_USER=sflanders
-  DB_PASSWD=dbpasswd
-  DB_NAME=general
+  DB_USER=**********************
+  # DB_USER=**********************
+  DB_PASSWD=**********************
+  DB_NAME=**********************
   TABLE=cpu_temp
+  # DB_SERVER=Untyping.org
   DB_SERVER=ferrumpi.local
   
   TEMPC=$(/usr/bin/vcgencmd measure_temp|tr -d 'temp='|tr -d "'C")
@@ -50,10 +52,10 @@ EOF
 }
 
 function LogTempToUntyping() {
-  HOST=****************
-  USER=****************
-  PW=***************
-  DB=***************
+  HOST=dallas166.arvixeshared.com
+  USER=untyping_dbuser
+  PW=G1ngerAle
+  DB=untyping_general
   TABLE=cpu_temp
   TEMPC=$(/usr/bin/vcgencmd measure_temp|tr -d 'temp='|tr -d "'C")
   if [ "$?" -eq "0" ]
@@ -96,6 +98,7 @@ function RSyncImg() {
   pushd $MOVIE_DIR
   echo -n rsync $(date +"%m/%d/%y %H:%M:%S") :\  >> $LOGFILE
   rsync -avze ssh --include 'index.php' --include 'CpuTempLog*' --include 'LakeTempLog*' --include 'm*.jpg' --include 'latest*' --exclude '*' . untyping@untyping.org:public_html/lm/ >> $LOGFILE
+  # rsync -avze ssh --include 'mergedlatest.jpg' --exclude '*' . untyping@untyping.org:public_html/lm/
   popd
 }
 
@@ -189,10 +192,23 @@ function DoEnfuseCapture() {
   #rm ${CACHE2_DIR}${DATE}_enfuse.jpg
 }
 
+### https://www.raspberrypi.com/documentation/accessories/camera.html
+# Main capture block.
 function captureImage() {
   IMG=${CAPTURE_DIR}/${DATE}${BATCH}.jpg
+
+  # Lowlight fix, DEC=high crashes sometimes in low light.
+  H=$(date +"%H")
+  RISEHOUR=6
+  SETHOUR=20
+  DRC=high
+  #if [ $H -lt $RISEHOUR ] || [ $H -gt $SETHOUR ]; then DRC=medium; fi 
+
   # /usr/bin/raspistill -ex auto -n -o ${IMG}
-  nice timeout 60s nice /usr/bin/raspistill -ex night -drc high -n -o ${IMG}
+  #nice timeout 60s nice /usr/bin/raspistill -ex night -drc high -n -o ${IMG}
+  nice timeout 60s nice /usr/bin/libcamera-jpeg -n -o ${IMG}
+  sleep 5
+
   if [ "$?" -eq "0" ]
   then 
     cp --force $IMG ${MOVIE_DIR}latest.jpg
@@ -291,7 +307,7 @@ function InstallCron() {
   # install
   # */3 4-20 Summer, */2 5-19 Aug
   # crontab -l | { cat; echo "*/3 4-22 * * * $CRON capture"; }   | crontab -
-  crontab -l | { cat; echo "*/3 4-21 * * *   $CRON capture"; }   | crontab -
+  crontab -l | { cat; echo "*/3 5-21 * * *   $CRON capture"; }   | crontab -
   crontab -l | { cat; echo "5 22 * * *       $CRON makemovie"; } | crontab -
   crontab -l | { cat; echo "*/17 * * * *     $CRON rsync"; }     | crontab -
   crontab -l | { cat; echo "*/17 * * * *     $CRON rsyncimg"; }  | crontab -
@@ -355,4 +371,3 @@ fi
 # convert 20190619_200912first.jpg -resize 720x486^ -gravity center -extent 720x468 20190619_200912a.jpg
 # 
 # ls -1 *.jpg|sort|while read f ; do echo convert $f -resize 720x486^ -gravity center -extent 720x486 ${f//first/a} >> go
-
